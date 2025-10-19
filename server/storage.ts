@@ -114,32 +114,52 @@ export class DatabaseStorage implements IStorage {
         pricePerHour: services.pricePerHour,
         imageUrl: services.imageUrl,
         createdAt: services.createdAt,
-        provider: {
-          id: providerProfiles.id,
-          userId: providerProfiles.userId,
-          bio: providerProfiles.bio,
-          phone: providerProfiles.phone,
-          location: providerProfiles.location,
-          yearsExperience: providerProfiles.yearsExperience,
-          user: {
-            id: users.id,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-          },
-        },
+        providerProfileId: providerProfiles.id,
+        providerUserId: providerProfiles.userId,
+        providerBio: providerProfiles.bio,
+        providerPhone: providerProfiles.phone,
+        providerLocation: providerProfiles.location,
+        providerYearsExperience: providerProfiles.yearsExperience,
+        providerUserEmail: users.email,
+        providerUserFirstName: users.firstName,
+        providerUserLastName: users.lastName,
+        providerUserProfileImageUrl: users.profileImageUrl,
       })
       .from(services)
       .innerJoin(providerProfiles, eq(services.providerId, providerProfiles.id))
       .innerJoin(users, eq(providerProfiles.userId, users.id))
       .orderBy(desc(services.createdAt));
     
-    return result;
+    // Transform flat result to nested structure
+    return result.map(row => ({
+      id: row.id,
+      providerId: row.providerId,
+      category: row.category,
+      title: row.title,
+      description: row.description,
+      pricePerHour: row.pricePerHour,
+      imageUrl: row.imageUrl,
+      createdAt: row.createdAt,
+      provider: {
+        id: row.providerProfileId,
+        userId: row.providerUserId,
+        bio: row.providerBio,
+        phone: row.providerPhone,
+        location: row.providerLocation,
+        yearsExperience: row.providerYearsExperience,
+        user: {
+          id: row.providerUserId,
+          email: row.providerUserEmail,
+          firstName: row.providerUserFirstName,
+          lastName: row.providerUserLastName,
+          profileImageUrl: row.providerUserProfileImageUrl,
+        },
+      },
+    }));
   }
 
   async getServiceById(id: string): Promise<any> {
-    const [result] = await db
+    const [row] = await db
       .select({
         id: services.id,
         providerId: services.providerId,
@@ -149,28 +169,50 @@ export class DatabaseStorage implements IStorage {
         pricePerHour: services.pricePerHour,
         imageUrl: services.imageUrl,
         createdAt: services.createdAt,
-        provider: {
-          id: providerProfiles.id,
-          userId: providerProfiles.userId,
-          bio: providerProfiles.bio,
-          phone: providerProfiles.phone,
-          location: providerProfiles.location,
-          yearsExperience: providerProfiles.yearsExperience,
-          user: {
-            id: users.id,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-          },
-        },
+        providerProfileId: providerProfiles.id,
+        providerUserId: providerProfiles.userId,
+        providerBio: providerProfiles.bio,
+        providerPhone: providerProfiles.phone,
+        providerLocation: providerProfiles.location,
+        providerYearsExperience: providerProfiles.yearsExperience,
+        providerUserEmail: users.email,
+        providerUserFirstName: users.firstName,
+        providerUserLastName: users.lastName,
+        providerUserProfileImageUrl: users.profileImageUrl,
       })
       .from(services)
       .innerJoin(providerProfiles, eq(services.providerId, providerProfiles.id))
       .innerJoin(users, eq(providerProfiles.userId, users.id))
       .where(eq(services.id, id));
     
-    return result;
+    if (!row) return undefined;
+    
+    // Transform flat result to nested structure
+    return {
+      id: row.id,
+      providerId: row.providerId,
+      category: row.category,
+      title: row.title,
+      description: row.description,
+      pricePerHour: row.pricePerHour,
+      imageUrl: row.imageUrl,
+      createdAt: row.createdAt,
+      provider: {
+        id: row.providerProfileId,
+        userId: row.providerUserId,
+        bio: row.providerBio,
+        phone: row.providerPhone,
+        location: row.providerLocation,
+        yearsExperience: row.providerYearsExperience,
+        user: {
+          id: row.providerUserId,
+          email: row.providerUserEmail,
+          firstName: row.providerUserFirstName,
+          lastName: row.providerUserLastName,
+          profileImageUrl: row.providerUserProfileImageUrl,
+        },
+      },
+    };
   }
 
   async getProviderServices(providerId: string): Promise<Service[]> {
@@ -184,14 +226,17 @@ export class DatabaseStorage implements IStorage {
   async createService(serviceData: InsertService): Promise<Service> {
     const [service] = await db
       .insert(services)
-      .values(serviceData)
+      .values([{
+        ...serviceData,
+        pricePerHour: String(serviceData.pricePerHour),
+      }])
       .returning();
     return service;
   }
 
   // Booking operations
   async getBookingById(id: string): Promise<any> {
-    const [result] = await db
+    const [row] = await db
       .select({
         id: bookings.id,
         customerId: bookings.customerId,
@@ -204,22 +249,14 @@ export class DatabaseStorage implements IStorage {
         notes: bookings.notes,
         address: bookings.address,
         createdAt: bookings.createdAt,
-        provider: {
-          id: providerProfiles.id,
-          userId: providerProfiles.userId,
-          location: providerProfiles.location,
-          user: {
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-          },
-        },
-        service: {
-          id: services.id,
-          title: services.title,
-          category: services.category,
-        },
+        providerProfileId: providerProfiles.id,
+        providerUserId: providerProfiles.userId,
+        providerLocation: providerProfiles.location,
+        providerUserFirstName: users.firstName,
+        providerUserLastName: users.lastName,
+        providerUserProfileImageUrl: users.profileImageUrl,
+        serviceTitle: services.title,
+        serviceCategory: services.category,
       })
       .from(bookings)
       .innerJoin(providerProfiles, eq(bookings.providerId, providerProfiles.id))
@@ -227,7 +264,37 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(services, eq(bookings.serviceId, services.id))
       .where(eq(bookings.id, id));
     
-    return result;
+    if (!row) return undefined;
+    
+    return {
+      id: row.id,
+      customerId: row.customerId,
+      providerId: row.providerId,
+      serviceId: row.serviceId,
+      scheduledDate: row.scheduledDate,
+      status: row.status,
+      estimatedHours: row.estimatedHours,
+      totalPrice: row.totalPrice,
+      notes: row.notes,
+      address: row.address,
+      createdAt: row.createdAt,
+      provider: {
+        id: row.providerProfileId,
+        userId: row.providerUserId,
+        location: row.providerLocation,
+        user: {
+          id: row.providerUserId,
+          firstName: row.providerUserFirstName,
+          lastName: row.providerUserLastName,
+          profileImageUrl: row.providerUserProfileImageUrl,
+        },
+      },
+      service: {
+        id: row.serviceId,
+        title: row.serviceTitle,
+        category: row.serviceCategory,
+      },
+    };
   }
 
   async getCustomerBookings(customerId: string): Promise<any[]> {
@@ -244,22 +311,14 @@ export class DatabaseStorage implements IStorage {
         notes: bookings.notes,
         address: bookings.address,
         createdAt: bookings.createdAt,
-        provider: {
-          id: providerProfiles.id,
-          userId: providerProfiles.userId,
-          location: providerProfiles.location,
-          user: {
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-          },
-        },
-        service: {
-          id: services.id,
-          title: services.title,
-          category: services.category,
-        },
+        providerProfileId: providerProfiles.id,
+        providerUserId: providerProfiles.userId,
+        providerLocation: providerProfiles.location,
+        providerUserFirstName: users.firstName,
+        providerUserLastName: users.lastName,
+        providerUserProfileImageUrl: users.profileImageUrl,
+        serviceTitle: services.title,
+        serviceCategory: services.category,
       })
       .from(bookings)
       .innerJoin(providerProfiles, eq(bookings.providerId, providerProfiles.id))
@@ -268,7 +327,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bookings.customerId, customerId))
       .orderBy(desc(bookings.createdAt));
     
-    return result;
+    return result.map(row => ({
+      id: row.id,
+      customerId: row.customerId,
+      providerId: row.providerId,
+      serviceId: row.serviceId,
+      scheduledDate: row.scheduledDate,
+      status: row.status,
+      estimatedHours: row.estimatedHours,
+      totalPrice: row.totalPrice,
+      notes: row.notes,
+      address: row.address,
+      createdAt: row.createdAt,
+      provider: {
+        id: row.providerProfileId,
+        userId: row.providerUserId,
+        location: row.providerLocation,
+        user: {
+          id: row.providerUserId,
+          firstName: row.providerUserFirstName,
+          lastName: row.providerUserLastName,
+          profileImageUrl: row.providerUserProfileImageUrl,
+        },
+      },
+      service: {
+        id: row.serviceId,
+        title: row.serviceTitle,
+        category: row.serviceCategory,
+      },
+    }));
   }
 
   async getProviderBookings(providerId: string): Promise<any[]> {
@@ -285,17 +372,11 @@ export class DatabaseStorage implements IStorage {
         notes: bookings.notes,
         address: bookings.address,
         createdAt: bookings.createdAt,
-        customer: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        },
-        service: {
-          id: services.id,
-          title: services.title,
-          category: services.category,
-        },
+        customerFirstName: users.firstName,
+        customerLastName: users.lastName,
+        customerEmail: users.email,
+        serviceTitle: services.title,
+        serviceCategory: services.category,
       })
       .from(bookings)
       .innerJoin(users, eq(bookings.customerId, users.id))
@@ -303,13 +384,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bookings.providerId, providerId))
       .orderBy(desc(bookings.createdAt));
     
-    return result;
+    return result.map(row => ({
+      id: row.id,
+      customerId: row.customerId,
+      providerId: row.providerId,
+      serviceId: row.serviceId,
+      scheduledDate: row.scheduledDate,
+      status: row.status,
+      estimatedHours: row.estimatedHours,
+      totalPrice: row.totalPrice,
+      notes: row.notes,
+      address: row.address,
+      createdAt: row.createdAt,
+      customer: {
+        id: row.customerId,
+        firstName: row.customerFirstName,
+        lastName: row.customerLastName,
+        email: row.customerEmail,
+      },
+      service: {
+        id: row.serviceId,
+        title: row.serviceTitle,
+        category: row.serviceCategory,
+      },
+    }));
   }
 
   async createBooking(bookingData: InsertBooking): Promise<Booking> {
     const [booking] = await db
       .insert(bookings)
-      .values(bookingData)
+      .values([{
+        ...bookingData,
+        estimatedHours: bookingData.estimatedHours ? String(bookingData.estimatedHours) : undefined,
+        totalPrice: bookingData.totalPrice ? String(bookingData.totalPrice) : undefined,
+      }])
       .returning();
     return booking;
   }
@@ -327,7 +435,10 @@ export class DatabaseStorage implements IStorage {
   async createPayment(paymentData: InsertPayment): Promise<Payment> {
     const [payment] = await db
       .insert(payments)
-      .values(paymentData)
+      .values([{
+        ...paymentData,
+        amount: String(paymentData.amount),
+      }])
       .returning();
     return payment;
   }
